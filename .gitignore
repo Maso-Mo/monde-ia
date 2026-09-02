@@ -1,0 +1,90 @@
+# ============================================================
+# ZFLM - Monde des LLM - Gitignore strict
+# ============================================================
+# Aucun secret ne doit JAMAIS être versionné.
+
+# --- Secrets et credentials ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+credentials
+credentials/*
+secrets
+secrets/*
+ssh_keys/
+*.rsa
+id_rsa*
+authorized_keys
+
+# --- Sorties runtime et caches ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+ENV/
+
+# Node / JS
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-store/
+
+# Logs
+logs/*.log
+logs/*.json
+logs/**/*
+!logs/.gitkeep
+
+# Sandboxes et projets générés (contenu runtime, pas le code source)
+projects/*/build/
+projects/*/dist/
+projects/*/.cache/
+projects/*/node_modules/
+
+# Mémoire et bases temporaires
+*.db
+*.sqlite
+*.sqlite3
+memory/*.json
+memory/*.jsonl
+memory/**/*
+!memory/archives/.gitkeep
+!memory/.gitkeep
+
+# Backups locaux
+backups/
+*.tar.gz
+*.zip
+*.bak
+
+# Docker
+.dockerignore-tmp
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Fichiers temporaires divers
+*.tmp
+*.temp
+.cache/
+.tmp/

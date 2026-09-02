@@ -1,0 +1,28 @@
+# ============================================================
+# ZFLM - Orchestrator dependencies (minimal V1)
+# ============================================================
+# Stack minimal. Pas de framework lourd.
+# Pas de LangChain / LangGraph / vector DB / Celery / Redis.
+
+# Validation / schémas
+pydantic>=2
+
+# Configuration / env
+python-dotenv
+PyYAML
+
+# HTTP client (async, moderne)
+httpx
+
+# Pilotage Docker sandbox
+docker
+
+# Tests
+pytest
+
+# (Volontairement absents en V1 :
+#   - celery / redis / kafka   -> pas de file de messages
+#   - fastapi / flask          -> pas d'API externe en V1
+#   - sqlalchemy               -> SQLite brut ou sqlite3 stdlib
+#   - langchain / langgraph    -> orchestration maison
+# )

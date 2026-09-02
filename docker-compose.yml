@@ -1,0 +1,96 @@
+# ============================================================
+# ZFLM - docker-compose (séparation conceptuelle V1)
+# ============================================================
+# Ce fichier PRÉPARE la séparation entre :
+#   - l'orchestrateur ZFLM (notre code)
+#   - FreeLLMAPI (service tiers, NON construit ici)
+#
+# En Phase 0 on ne construit PAS toute la stack : seule la
+# partie orchestrateur est définie ici. FreeLLMAPI sera lancé
+# séparément (en pratique via son image officielle
+# ghcr.io/tashfeenahmed/freellmapi) et joint à l'orchestrateur
+# via un réseau commun.
+#
+# Volumes nommés : toutes les données persistantes vivent dans
+# des volumes Docker, pas dans le système hôte.
+#
+# Pour lancer plus tard (Phase 1+) :
+#   docker compose pull
+#   docker compose up -d
+# ============================================================
+
+name: zflm
+
+services:
+
+  # ----------------------------------------------------------
+  # Orchestrateur ZFLM (notre code, build local)
+  # ----------------------------------------------------------
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    image: zflm/orchestrator:latest
+    container_name: zflm-orchestrator
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # FreeLLMAPI sera joignable via le réseau zflm_net
+      - FREELLMAPI_URL=${FREELLMAPI_URL:-http://freellmapi:8080}
+      - ZFLM_DB_PATH=/data/zflm.db
+      - ZFLM_PROJECTS_DIR=/projects
+      - ZFLM_MEMORY_DIR=/memory
+      - ZFLM_LOGS_DIR=/logs
+    volumes:
+      - zflm_data:/data
+      - zflm_projects:/projects
+      - zflm_memory:/memory
+      - zflm_logs:/logs
+    networks:
+      - zflm_net
+    # Pas d'API HTTP externe en V1 : pas de ports publiés.
+    # Sera défini en Phase 1 si on ajoute un dashboard léger.
+
+  # ----------------------------------------------------------
+  # FreeLLMAPI (service tiers - NON construit ici)
+  # ----------------------------------------------------------
+  # Cet exemple illustre comment FreeLLMAPI sera intégré.
+  # Le bloc est COMMENTÉ pour ne pas le démarrer par erreur
+  # en Phase 0 (l'image n'est pas garantie disponible localement
+  # et le service n'est pas dans ce repo).
+  #
+  # Pour l'activer en Phase 1+ :
+  #   1. Décommenter le bloc
+  #   2. Vérifier que FREELLMAPI_URL pointe ici
+  #   3. S'assurer que l'image est pullée : docker pull ghcr.io/tashfeenahmed/freellmapi:latest
+  #
+  # freellmapi:
+  #   image: ghcr.io/tashfeenahmed/freellmapi:latest
+  #   container_name: zflm-freellmapi
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env
+  #   networks:
+  #     - zflm_net
+
+# ============================================================
+# Volumes persistants
+# ============================================================
+volumes:
+  zflm_data:
+    name: zflm_data
+  zflm_projects:
+    name: zflm_projects
+  zflm_memory:
+    name: zflm_memory
+  zflm_logs:
+    name: zflm_logs
+
+# ============================================================
+# Réseaux
+# ============================================================
+networks:
+  zflm_net:
+    name: zflm_net
+    driver: bridge

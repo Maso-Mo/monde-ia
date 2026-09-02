@@ -1,0 +1,94 @@
+# ============================================================
+# ZFLM - Définition des niveaux de difficulté
+# ============================================================
+# Chaque niveau décrit une famille de projets que les LLM
+# doivent générer. La difficulté augmente progressivement.
+#
+# La logique complète (state machine, scoring, etc.) sera
+# implémentée en Phase 1. Pour l'instant ce fichier sert
+# de référence statique.
+#
+# Format minimal V1 :
+#   - id           : identifiant court
+#   - label        : nom lisible
+#   - description  : ce que les LLM doivent produire
+#   - sandbox      : image sandbox à utiliser
+#   - max_attempts : tentatives autorisées (hérité du global si omis)
+#   - validators   : liste de checks de base à appliquer
+#
+# Seuls les premiers niveaux sont définis ici. Les autres
+# seront ajoutés après validation de la Phase 0.
+
+levels:
+
+  - id: html-basic
+    label: HTML basique
+    description: |
+      Une page HTML unique, valide, minimaliste.
+      Pas de CSS, pas de JS. Squelette sémantique propre.
+    sandbox: html-css
+    max_attempts: 3
+    validators:
+      - html_well_formed
+      - has_doctype
+      - has_html_root
+
+  - id: html-structured
+    label: HTML structuré
+    description: |
+      Page HTML sémantique avec header / main / footer,
+      titres hiérarchisés, listes, liens, et au moins une image.
+    sandbox: html-css
+    max_attempts: 3
+    validators:
+      - html_well_formed
+      - semantic_structure
+      - heading_hierarchy
+
+  - id: css-basic
+    label: CSS de base
+    description: |
+      Page HTML + feuille de style CSS externe.
+      Mise en forme simple : couleurs, typographie, espacement.
+    sandbox: html-css
+    max_attempts: 3
+    validators:
+      - html_well_formed
+      - css_valid
+      - external_stylesheet_linked
+
+  - id: css-responsive
+    label: CSS responsive
+    description: |
+      Page HTML + CSS responsive (media queries, unités relatives,
+      mise en page flexible).
+    sandbox: html-css
+    max_attempts: 3
+    validators:
+      - html_well_formed
+      - css_valid
+      - has_media_queries
+      - uses_relative_units
+
+  - id: js-basic
+    label: JavaScript basique
+    description: |
+      Page HTML/CSS + script JS externe minimal.
+      Manipulation DOM simple, événements de base.
+    sandbox: js-frontend
+    max_attempts: 3
+    validators:
+      - html_well_formed
+      - js_syntax_ok
+      - uses_add_event_listener
+
+# --- Niveaux à venir (placeholder, non actifs) ---
+#  - id: js-interactions
+#  - id: frontend-complex
+#  - id: ambitious-project
+
+# Valeur globale par défaut si un niveau ne précise pas max_attempts
+default_max_attempts: 3
+
+# Sandbox par défaut si un niveau ne précise pas sandbox
+default_sandbox: html-css
