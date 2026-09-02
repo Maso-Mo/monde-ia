@@ -33,10 +33,14 @@ RUN pip install -r /app/requirements.txt
 # Copier le code source
 COPY src/ /app/src/
 
-# Préparer les répertoires runtime (seront montés en volumes
-# via docker-compose, mais on les crée pour le mode standalone)
-RUN mkdir -p /data /projects /memory /logs \
- && chown -R zflm:zflm /app /data /projects /memory /logs
+# Préparer les répertoires runtime.
+#   - /app/projects  : bind mount depuis ./projects/ côté hôte
+#                      (sites générés, versionnés par Git)
+#   - /data /memory /logs : volumes Docker nommés (données
+#                      runtime opaques : SQLite, JSON de mémoire,
+#                      logs bruts — non versionnés)
+RUN mkdir -p /app/projects /data /memory /logs \
+ && chown -R zflm:zflm /app /data /memory /logs
 
 USER zflm
 

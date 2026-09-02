@@ -50,7 +50,10 @@ logs/*.json
 logs/**/*
 !logs/.gitkeep
 
-# Sandboxes et projets générés (contenu runtime, pas le code source)
+# Sandboxes et projets générés.
+# Les sources des sites (.html, .css, .js, .md, etc.) sont VERSIONNÉES
+# (snapshot APPROVED + dernier état FAILED_AFTER_RETRIES).
+# Seuls les artefacts de build et caches sont ignorés.
 projects/*/build/
 projects/*/dist/
 projects/*/.cache/

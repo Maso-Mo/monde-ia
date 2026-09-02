@@ -60,7 +60,7 @@ entreprise-ia-maso-dev-youtube/
 │   ├── html-css/             # Sandbox pour projets HTML/CSS
 │   ├── js-frontend/          # Sandbox pour projets JS
 │   └── advanced/             # Sandbox projets ambitieux (à venir)
-├── projects/                 # Sorties générées par les LLM
+├── projects/                 # Sites générés (bind mount Docker, versionnés par Git)
 ├── memory/archives/          # Mémoire long terme
 ├── logs/                     # Logs runtime
 ├── scripts/
@@ -102,6 +102,15 @@ La VM hébergera :
 - Git / logs / workspaces / sauvegardes
 
 Le script `scripts/bootstrap_oracle.sh` prépare une VM Ubuntu ARM64 vierge avec toutes les dépendances système (Git, Docker, Compose, jq, rsync, etc.).
+
+### Persistance des projets
+
+Le dossier `./projects/` est exposé à l'orchestrateur via un **bind mount** (`./projects:/app/projects`) et non via un volume Docker nommé. Cela permet de versionner directement dans Git :
+
+- un **snapshot** du site lorsqu'une tâche passe en `APPROVED` ;
+- le **dernier état** du site lorsqu'une tâche atteint `FAILED_AFTER_RETRIES`.
+
+Les artefacts éphémères (`build/`, `dist/`, `node_modules/`, `.cache/`) restent ignorés par Git (cf. `.gitignore`). Les données runtime opaques (SQLite, mémoire, logs) restent dans des volumes Docker nommés.
 
 ---
 

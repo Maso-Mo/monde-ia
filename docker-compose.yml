@@ -11,8 +11,11 @@
 # ghcr.io/tashfeenahmed/freellmapi) et joint à l'orchestrateur
 # via un réseau commun.
 #
-# Volumes nommés : toutes les données persistantes vivent dans
-# des volumes Docker, pas dans le système hôte.
+# Volumes :
+#   - ./projects  -> bind mount, versionné par Git (snapshots APPROVED,
+#                    et dernier état FAILED_AFTER_RETRIES).
+#   - volumes nommés pour /data, /memory, /logs : données runtime
+#     opaques (SQLite, JSON mémoire, logs bruts) — non versionnées.
 #
 # Pour lancer plus tard (Phase 1+) :
 #   docker compose pull
@@ -39,12 +42,15 @@ services:
       # FreeLLMAPI sera joignable via le réseau zflm_net
       - FREELLMAPI_URL=${FREELLMAPI_URL:-http://freellmapi:8080}
       - ZFLM_DB_PATH=/data/zflm.db
-      - ZFLM_PROJECTS_DIR=/projects
+      - ZFLM_PROJECTS_DIR=/app/projects
       - ZFLM_MEMORY_DIR=/memory
       - ZFLM_LOGS_DIR=/logs
     volumes:
+      # Sites générés : bind mount (snapshot APPROVED + dernier
+      # état FAILED_AFTER_RETRIES versionnés dans ./projects/).
+      - ./projects:/app/projects
+      # Données runtime opaques : volumes Docker nommés.
       - zflm_data:/data
-      - zflm_projects:/projects
       - zflm_memory:/memory
       - zflm_logs:/logs
     networks:
@@ -80,8 +86,6 @@ services:
 volumes:
   zflm_data:
     name: zflm_data
-  zflm_projects:
-    name: zflm_projects
   zflm_memory:
     name: zflm_memory
   zflm_logs:

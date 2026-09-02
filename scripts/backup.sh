@@ -7,6 +7,10 @@
 #   - configs
 #   - scripts
 #   - documentation
+#   - projects/ : sites générés (snapshots APPROVED et derniers
+#                 états FAILED_AFTER_RETRIES). Sous-dossiers
+#                 éphémères (build/, dist/, node_modules/, .cache/)
+#                 exclus.
 #
 # Le backup ne contient JAMAIS :
 #   - .env / .env.*

@@ -17,7 +17,8 @@ Cette phase ne contient **aucune logique métier**. Elle pose uniquement les fon
 | Sujet | Décision | Raison |
 |---|---|---|
 | Runtime Python | 3.12 (dans Docker) | Compatibilité Pydantic v2 et stack minimale |
-| Persistance | SQLite (volume Docker) | Suffisant pour une expérience mono-VM |
+| Persistance | SQLite (volume Docker nommé) | Suffisant pour une expérience mono-VM |
+| Projets générés | **Bind mount** `./projects` ↔ `/app/projects` | Versionnage Git direct des snapshots APPROVED et derniers états FAILED_AFTER_RETRIES |
 | Sandboxes | Images Docker dédiées par niveau | Reproductibilité et isolation |
 | FreeLLMAPI | Service tiers externe, NON versionné ici | Le code de FreeLLMAPI reste indépendant |
 | OpenRouter | DEV uniquement (pour coder ZFLM) | L'expérience finale utilise FreeLLMAPI |
