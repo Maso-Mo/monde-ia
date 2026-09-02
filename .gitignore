@@ -63,11 +63,14 @@ projects/*/node_modules/
 *.db
 *.sqlite
 *.sqlite3
+# Fichiers de mémoire runtime (JSON / JSONL) directement a la racine
+# de memory/. Les archives versionnees vivent dans memory/archives/
+# et DOIVENT etre ajoutees explicitement au suivi Git.
 memory/*.json
 memory/*.jsonl
-memory/**/*
-!memory/archives/.gitkeep
-!memory/.gitkeep
+# Fichiers runtime opaques (logs bruts en JSONL)
+logs/*.jsonl
+logs/*.log
 
 # Backups locaux
 backups/

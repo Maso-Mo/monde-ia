@@ -36,20 +36,22 @@ COPY src/ /app/src/
 # Préparer les répertoires runtime.
 #   - /app/projects  : bind mount depuis ./projects/ côté hôte
 #                      (sites générés, versionnés par Git)
-#   - /data /memory /logs : volumes Docker nommés (données
-#                      runtime opaques : SQLite, JSON de mémoire,
-#                      logs bruts — non versionnés)
-RUN mkdir -p /app/projects /data /memory /logs \
- && chown -R zflm:zflm /app /data /memory /logs
+#   - /app/memory    : SQLite (zflm.db), mémoire long terme
+#   - /app/logs      : logs JSONL
+# Tous ces chemins peuvent être bind-mountés en dev (machine hôte)
+# OU montés comme volumes Docker nommés en production.
+RUN mkdir -p /app/projects /app/memory /app/logs \
+ && chown -R zflm:zflm /app
 
 USER zflm
 
 ENV PYTHONPATH=/app/src
 
-# Healthcheck simple : python peut-il s'importer ?
+# Healthcheck : le module src.main peut être importé et son
+# entrypoint appelé en mode --show-recovery.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD python -c "import sys; sys.exit(0)" || exit 1
+  CMD python -m src.main --show-recovery || exit 1
 
-# Commande par défaut (sera remplacée en Phase 1)
-# En Phase 0, on vérifie simplement que les imports fonctionnent.
-CMD ["python", "-c", "import pydantic, httpx, docker, yaml, dotenv, pytest; print('ZFLM orchestrator runtime OK')"]
+# Entrypoint par défaut (Phase 1). En Phase 2, on remplacera par un
+# vrai service long-vivant (boucle d'expérience).
+CMD ["python", "-m", "src.main"]

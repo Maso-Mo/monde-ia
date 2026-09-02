@@ -4,11 +4,21 @@
 
 ---
 
-## ⚠️ Phase 0 — Bootstrap architecturel uniquement
+## ⚠️ Phase 1 — Coeur de l'orchestrateur (en cours)
 
-Ce dépôt contient pour l'instant **uniquement l'ossature** (arborescence, configuration, images sandbox, scripts d'infrastructure). **Aucune logique métier n'est encore implémentée.**
+Le squelette de la Phase 0 est en place, et le **moteur persistant** de l'orchestrateur est implémenté :
 
-Nous validerons ensemble la Phase 0 avant d'entamer la Phase 1.
+- SQLite + modèle de données complet (11 entités) ;
+- machine à états persistante (12 états) ;
+- configuration des rôles LLM (Qwen 2.5 / Qwen 3 — modèles exacts à choisir) ;
+- abstraction LLM avec `MockLLMProvider` ;
+- recovery depuis SQLite ;
+- logging JSONL ;
+- 75 tests pytest, tous verts.
+
+**Aucun appel réseau réel** n'est encore effectué. L'intégration FreeLLMAPI viendra en Phase 2.
+
+Voir `docs/README.md` pour le détail des décisions techniques Phase 1.
 
 ---
 

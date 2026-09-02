@@ -1,0 +1,53 @@
+# ============================================================
+# ZFLM - Configuration des rôles LLM
+# ============================================================
+# Cette configuration est lue par l'orchestrateur à chaque démarrage.
+# Elle permet de changer provider / model / family SANS modifier
+# le code Python.
+#
+# Trois rôles logiques :
+#   - generator : produit le code du site
+#   - reviewer  : analyse le code et propose des corrections
+#                  (famille Qwen 2.5 envisagée)
+#   - validator : valide ou refuse la tentative finale
+#                  (famille Qwen 3 envisagée)
+#
+# IMPORTANT (Phase 1) :
+#   - Les modèles exacts ne sont PAS encore choisis.
+#   - provider / model sont laissés à null tant que le catalogue
+#     FreeLLMAPI réel n'a pas été inspecté.
+#   - Cette config est utilisée par la Phase 2 (intégration
+#     FreeLLMAPI réelle) sans changement de code.
+#
+# Valeurs possibles (rappel) :
+#   provider : nom du fournisseur cible via FreeLLMAPI (ex. "groq",
+#              "openrouter", "mistral", etc.) — null = pas encore
+#              configuré.
+#   model    : identifiant exact du modèle chez le provider.
+#   family   : indication libre (ex. "qwen2.5", "qwen3",
+#              "llama3.3") — purement informatif en V1.
+
+roles:
+
+  generator:
+    provider: null
+    model: null
+    family: null
+
+  reviewer:
+    provider: null
+    model: null
+    family: qwen2.5
+
+  validator:
+    provider: null
+    model: null
+    family: qwen3
+
+# Notes d'évolution futures :
+# - Exemple pour activer FreeLLMAPI -> Groq -> Qwen 2.5 :
+#     reviewer:
+#       provider: groq
+#       model: qwen-2.5-72b-instruct
+#       family: qwen2.5
+# - Aucun changement de code requis, uniquement éditer ce fichier.

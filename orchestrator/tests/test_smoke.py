@@ -62,17 +62,14 @@ def test_subpackages_importable():
         "config",
     ]
     for name in expected:
-        # Import relatif au package src/ ; PYTHONPATH=/app/src en Docker
+        # Import absolu depuis le package src/. En Docker, PYTHONPATH=/app,
+        # ce qui rend `src.X` importable. En dev local, conftest.py ajoute
+        # orchestrator/ au sys.path.
         try:
-            importlib.import_module(name)
+            importlib.import_module(f"src.{name}")
         except ImportError as e:
-            # Tolérance : les sous-packages peuvent ne pas encore
-            # exposer quoi que ce soit d'utile. On vérifie juste
-            # qu'ils sont dans sys.modules après un import forcé
-            # du package parent si nécessaire.
-            # Ici on se contente de signaler le cas.
             raise AssertionError(
-                f"Sous-package '{name}' non importable : {e}"
+                f"Sous-package 'src.{name}' non importable : {e}"
             )
 
 

@@ -41,18 +41,20 @@ services:
     environment:
       # FreeLLMAPI sera joignable via le réseau zflm_net
       - FREELLMAPI_URL=${FREELLMAPI_URL:-http://freellmapi:8080}
-      - ZFLM_DB_PATH=/data/zflm.db
+      - ZFLM_DB_PATH=/app/memory/zflm.db
       - ZFLM_PROJECTS_DIR=/app/projects
-      - ZFLM_MEMORY_DIR=/memory
-      - ZFLM_LOGS_DIR=/logs
+      - ZFLM_MEMORY_DIR=/app/memory
+      - ZFLM_LOGS_DIR=/app/logs
     volumes:
       # Sites générés : bind mount (snapshot APPROVED + dernier
       # état FAILED_AFTER_RETRIES versionnés dans ./projects/).
       - ./projects:/app/projects
-      # Données runtime opaques : volumes Docker nommés.
-      - zflm_data:/data
-      - zflm_memory:/memory
-      - zflm_logs:/logs
+      # SQLite + mémoire long terme + logs : bind mounts vers ./memory,
+      # ./memory/archives, ./logs. En production on pourrait basculer
+      # sur des volumes Docker nommés si on veut isoler la persistance
+      # du système de fichiers hôte.
+      - ./memory:/app/memory
+      - ./logs:/app/logs
     networks:
       - zflm_net
     # Pas d'API HTTP externe en V1 : pas de ports publiés.
@@ -84,12 +86,11 @@ services:
 # Volumes persistants
 # ============================================================
 volumes:
+  # En Phase 1 on utilise des bind mounts pour ./memory et ./logs.
+  # Les volumes nommés ci-dessous sont conservés pour un usage futur
+  # (par exemple si on veut basculer la DB sur un volume dédié).
   zflm_data:
     name: zflm_data
-  zflm_memory:
-    name: zflm_memory
-  zflm_logs:
-    name: zflm_logs
 
 # ============================================================
 # Réseaux
