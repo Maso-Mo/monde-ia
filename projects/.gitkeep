@@ -1,0 +1,11 @@
+# Projets générés
+
+Ce dossier reçoit les sites web générés par les LLM.
+
+**Important** : en production, ce dossier est un volume Docker
+(`zflm_projects`) et n'est pas versionné par Git.
+
+Le `.gitkeep` ci-dessous sert uniquement à préserver l'arborescence
+sur la machine de développement.
+
+# (placeholder)
