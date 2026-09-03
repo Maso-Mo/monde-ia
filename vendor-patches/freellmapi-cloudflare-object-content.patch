@@ -1,0 +1,146 @@
+diff --git a/server/src/lib/content.ts b/server/src/lib/content.ts
+index a2c7eb6..b2e856b 100644
+--- a/server/src/lib/content.ts
++++ b/server/src/lib/content.ts
+@@ -178,17 +178,39 @@ export function sanitizeResponse<T>(payload: T): T {
+ // string while leaving `tool_calls` and every other field untouched. Mutates
+ // and returns the same object (chunks are parsed fresh from JSON per frame, so
+ // in-place mutation is safe). Non-array content passes through unchanged. (#166)
+-export function normalizeOutboundContent<T>(payload: T): T {
++//
++// Cloudflare can return a JSON object directly in content (e.g. Qwen2.5
++// reviewer output with issues_found, severity, instructions_for_fix,
++// retry_needed). This function serializes such objects to JSON strings when
++// the platform is 'cloudflare'. Other providers keep their existing behavior.
++export function normalizeOutboundContent<T>(payload: T, platform?: string): T {
+   const choices = (payload as { choices?: unknown })?.choices;
+   if (!Array.isArray(choices)) return payload;
++  const isCloudflare = platform === 'cloudflare';
+   for (const choice of choices) {
+     const delta = (choice as { delta?: { content?: unknown } })?.delta;
+-    if (delta && Array.isArray(delta.content)) {
+-      delta.content = contentToString(delta.content);
++    if (delta) {
++      if (Array.isArray(delta.content)) {
++        delta.content = contentToString(delta.content);
++      } else if (isCloudflare) {
++        if (delta.content == null) {
++          delta.content = '';
++        } else if (typeof delta.content === 'object' && !Array.isArray(delta.content)) {
++          delta.content = JSON.stringify(delta.content);
++        }
++      }
+     }
+     const message = (choice as { message?: { content?: unknown } })?.message;
+-    if (message && Array.isArray(message.content)) {
+-      message.content = contentToString(message.content);
++    if (message) {
++      if (Array.isArray(message.content)) {
++        message.content = contentToString(message.content);
++      } else if (isCloudflare) {
++        if (message.content == null) {
++          message.content = '';
++        } else if (typeof message.content === 'object' && !Array.isArray(message.content)) {
++          message.content = JSON.stringify(message.content);
++        }
++      }
+     }
+   }
+   return payload;
+diff --git a/server/src/routes/proxy.ts b/server/src/routes/proxy.ts
+index 7fb77b2..302583e 100644
+--- a/server/src/routes/proxy.ts
++++ b/server/src/routes/proxy.ts
+@@ -2199,7 +2199,7 @@ proxyRouter.post('/chat/completions', async (req: Request, res: Response) => {
+               if (tc.function?.arguments) acc.args += tc.function.arguments;
+             }
+ 
+-            normalizeOutboundContent(anyChunk);
++            normalizeOutboundContent(anyChunk, route.platform);
+             sanitizeResponse(anyChunk);
+             const text = typeof choice.delta?.content === 'string' ? choice.delta.content : '';
+ 
+@@ -2635,7 +2635,7 @@ proxyRouter.post('/chat/completions', async (req: Request, res: Response) => {
+         res.setHeader('X-Routed-Via', routedViaValue(route.platform, route.modelId));
+         setFallbackHeaders(res, attempt, attemptLog);
+         // Normalize array-shaped message.content to a string on the way out (#166).
+-        const outboundBody = sanitizeResponse(normalizeOutboundContent(result));
++        const outboundBody = sanitizeResponse(normalizeOutboundContent(result, route.platform));
+         res.setHeader('X-FreeLLM-Cache', cacheKey ? 'MISS' : 'OFF');
+ 
+         // #1084: agents show zero context usage when the upstream omits
+diff --git a/server/src/__tests__/lib/content.test.ts b/server/src/__tests__/lib/content.test.ts
+index ede11d5..b555f6d 100644
+--- a/server/src/__tests__/lib/content.test.ts
++++ b/server/src/__tests__/lib/content.test.ts
+@@ -153,6 +153,70 @@ describe('normalizeOutboundContent (#166)', () => {
+     expect(() => normalizeOutboundContent(null as unknown)).not.toThrow();
+     expect(() => normalizeOutboundContent({} as unknown)).not.toThrow();
+   });
++
++  describe('Cloudflare object content serialization', () => {
++    const cloudflareObject = {
++      issues_found: ['issue1', 'issue2'],
++      severity: 'critical',
++      instructions_for_fix: ['fix1', 'fix2'],
++      retry_needed: true,
++    };
++
++    it('serializes Cloudflare message.content object to JSON string', () => {
++      const result = { choices: [{ index: 0, message: { role: 'assistant', content: cloudflareObject } }] };
++      const out = normalizeOutboundContent(result, 'cloudflare');
++      expect(out.choices[0].message.content).toBe(JSON.stringify(cloudflareObject));
++    });
++
++    it('serializes Cloudflare delta.content object to JSON string in streaming', () => {
++      const chunk = { choices: [{ index: 0, delta: { content: cloudflareObject } }] };
++      const out = normalizeOutboundContent(chunk, 'cloudflare');
++      expect(out.choices[0].delta.content).toBe(JSON.stringify(cloudflareObject));
++    });
++
++    it('converts Cloudflare null content to empty string', () => {
++      const result = { choices: [{ index: 0, message: { role: 'assistant', content: null } }] };
++      const out = normalizeOutboundContent(result, 'cloudflare');
++      expect(out.choices[0].message.content).toBe('');
++    });
++
++    it('converts Cloudflare undefined content to empty string', () => {
++      const result = { choices: [{ index: 0, message: { role: 'assistant', content: undefined } }] };
++      const out = normalizeOutboundContent(result, 'cloudflare');
++      expect(out.choices[0].message.content).toBe('');
++    });
++
++    it('does NOT serialize object content for non-Cloudflare providers (existing behavior: object passes through)', () => {
++      const result = { choices: [{ index: 0, message: { role: 'assistant', content: cloudflareObject } }] };
++      const out = normalizeOutboundContent(result, 'groq');
++      // Existing behavior: non-array content is left untouched
++      expect(out.choices[0].message.content).toBe(cloudflareObject);
++    });
++
++    it('does NOT serialize object content when platform is not provided (existing behavior: object passes through)', () => {
++      const result = { choices: [{ index: 0, message: { role: 'assistant', content: cloudflareObject } }] };
++      const out = normalizeOutboundContent(result);
++      expect(out.choices[0].message.content).toBe(cloudflareObject);
++    });
++
++    it('still coerces array content for Cloudflare (existing behavior preserved)', () => {
++      const result = { choices: [{ index: 0, message: { role: 'assistant', content: [{ type: 'text', text: 'array content' }] } }] };
++      const out = normalizeOutboundContent(result, 'cloudflare');
++      expect(out.choices[0].message.content).toBe('array content');
++    });
++
++    it('still coerces array delta.content for Cloudflare (existing behavior preserved)', () => {
++      const chunk = { choices: [{ index: 0, delta: { content: [{ type: 'text', text: 'stream' }] } }] };
++      const out = normalizeOutboundContent(chunk, 'cloudflare');
++      expect(out.choices[0].delta.content).toBe('stream');
++    });
++
++    it('leaves string content untouched for Cloudflare', () => {
++      const result = { choices: [{ index: 0, message: { role: 'assistant', content: 'plain string' } }] };
++      const out = normalizeOutboundContent(result, 'cloudflare');
++      expect(out.choices[0].message.content).toBe('plain string');
++    });
++  });
+ });
+ 
+ describe('sanitizeResponse', () => {
