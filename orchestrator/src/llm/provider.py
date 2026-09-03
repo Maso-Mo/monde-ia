@@ -53,18 +53,21 @@ class MockLLMProvider:
         )
         self._review_result = review_result or ReviewResult(
             issues_found=[],
-            instructions_for_fix=None,
+            severity="low",
+            instructions_for_fix=[],
+            retry_needed=False,
             token_usage=12,
             latency_ms=latency_ms,
         )
         self._validation_result = validation_result or ValidationResult(
-            status="approved",
-            score=1.0,
+            approved=True,
+            score=95,
             reason="Mock approve",
             blocking_issues=[],
             token_usage=10,
             latency_ms=latency_ms,
         )
+        # Garde les valeurs par defaut pour ValidationResult avec status="approved".
         self._health_status = health_status
         self._latency = latency_ms
         self.calls: list[MockCall] = []

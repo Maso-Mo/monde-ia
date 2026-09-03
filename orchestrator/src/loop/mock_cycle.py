@@ -55,7 +55,7 @@ class MockCycle:
         self._tasks = TaskRepository(db)
         self._attempts = AttemptRepository(db)
         self._machine = AttemptStateMachine(
-            writer=self._attempts,
+            db=db,
             logger=logger,
         )
 

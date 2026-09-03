@@ -36,6 +36,7 @@ from .repository import (
     MemoryRepository,
     ProviderStateRepository,
     GitSnapshotRepository,
+    StateTransitionRepository,
 )
 
 __all__ = [
@@ -51,6 +52,7 @@ __all__ = [
     "MemoryEntry",
     "ProviderState",
     "GitSnapshot",
+    "StateTransition",
     "ProjectRepository",
     "LevelRepository",
     "TaskRepository",
@@ -62,4 +64,5 @@ __all__ = [
     "MemoryRepository",
     "ProviderStateRepository",
     "GitSnapshotRepository",
+    "StateTransitionRepository",
 ]

@@ -19,11 +19,27 @@ class GenerationResult:
     latency_ms: Optional[int] = None
 
 
+# Severites possibles pour ReviewResult.severity.
+SEVERITY_VALUES: tuple[str, ...] = ("low", "medium", "high", "critical")
+
+
 @dataclass(slots=True)
 class ReviewResult:
-    """Resultat d'un appel ``reviewer`` (Qwen 2.5 dans la cible)."""
+    """Resultat d'un appel ``reviewer`` (Qwen 2.5 Coder via FreeLLMAPI).
+
+    Schema JSON attendu (Phase 1.1) :
+
+        {
+          "issues_found": ["..."],
+          "severity": "low|medium|high|critical",
+          "instructions_for_fix": ["..."],
+          "retry_needed": true
+        }
+    """
     issues_found: list[str] = field(default_factory=list)
-    instructions_for_fix: Optional[str] = None
+    severity: str = "low"
+    instructions_for_fix: list[str] = field(default_factory=list)
+    retry_needed: bool = False
     raw_output_ref: Optional[str] = None
     token_usage: Optional[int] = None
     latency_ms: Optional[int] = None
@@ -31,14 +47,30 @@ class ReviewResult:
 
 @dataclass(slots=True)
 class ValidationResult:
-    """Resultat d'un appel ``validator`` (Qwen 3 dans la cible)."""
-    status: str  # approved | rejected
-    score: Optional[float] = None
+    """Resultat d'un appel ``validator`` (Qwen 3.6 via FreeLLMAPI).
+
+    Schema JSON attendu (Phase 1.1) :
+
+        {
+          "approved": true,
+          "score": 0-100,
+          "reason": "...",
+          "blocking_issues": ["..."]
+        }
+    """
+    approved: bool = False
+    score: Optional[int] = None  # 0..100
     reason: Optional[str] = None
     blocking_issues: list[str] = field(default_factory=list)
     raw_output_ref: Optional[str] = None
     token_usage: Optional[int] = None
     latency_ms: Optional[int] = None
+
+    @property
+    def status(self) -> str:
+        """Compat : renvoie 'approved' ou 'rejected' pour les anciens
+        consommateurs (MockCycle, ValidationRepository)."""
+        return "approved" if self.approved else "rejected"
 
 
 @dataclass(slots=True)
@@ -88,4 +120,5 @@ __all__ = [
     "ValidationResult",
     "ProviderHealth",
     "LLMProvider",
+    "SEVERITY_VALUES",
 ]

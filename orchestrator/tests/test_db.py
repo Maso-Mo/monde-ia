@@ -35,6 +35,7 @@ def test_all_expected_tables_exist(tmp_db_path):
         "projects", "levels", "tasks", "attempts",
         "llm_calls", "reviews", "validations", "errors",
         "memories", "provider_states", "git_snapshots",
+        "state_transitions",
     }
     rows = db.connection.execute(
         "SELECT name FROM sqlite_master WHERE type='table'"

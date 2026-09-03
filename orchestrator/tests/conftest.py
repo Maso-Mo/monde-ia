@@ -87,8 +87,8 @@ def rejecting_provider():
     from src.llm import MockLLMProvider, ValidationResult
     p = MockLLMProvider()
     p.set_validation(ValidationResult(
-        status="rejected",
-        score=0.2,
+        approved=False,
+        score=20,
         reason="Mock reject",
         blocking_issues=["mock-issue-1"],
     ))
@@ -105,9 +105,8 @@ def jsonl_logger(tmp_path: Path):
 @pytest.fixture
 def machine(db, jsonl_logger):
     """AttemptStateMachine prete a l'emploi."""
-    from src.memory import AttemptRepository
     from src.state_machine import AttemptStateMachine
     return AttemptStateMachine(
-        writer=AttemptRepository(db),
+        db=db,
         logger=jsonl_logger,
     )

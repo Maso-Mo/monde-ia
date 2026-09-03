@@ -102,5 +102,50 @@ class Database:
     def connection(self) -> sqlite3.Connection:
         return self.connect()
 
+    # ------------------------------------------------------------------
+    # Opérations atomiques cross-table
+    # ------------------------------------------------------------------
+
+    def record_state_transition(
+        self,
+        *,
+        attempt_id: int,
+        from_state: str | None,
+        to_state: str,
+        previous_state_field: str | None,
+        finished_at: str | None,
+        reason: str | None = None,
+    ) -> None:
+        """Met a jour attempts.state + insere state_transitions en une
+        SEULE transaction SQLite.
+
+        Si quoi que ce soit echoue (par exemple une contrainte CHECK),
+        les deux operations sont annulees : la machine a etats ne se
+        retrouve JAMAIS dans un etat "a jour sans journal" ou
+        "journalise sans etat a jour".
+
+        ``previous_state_field`` est la valeur a stocker dans
+        ``attempts.previous_state`` (pour le cas PAUSED_PROVIDER).
+        ``None`` sinon.
+        """
+        from datetime import datetime, timezone
+        created_at = datetime.now(timezone.utc).isoformat()
+
+        with self.transaction() as conn:
+            # 1. Mise a jour de la ligne attempts.
+            conn.execute(
+                "UPDATE attempts "
+                "SET state = ?, previous_state = ?, finished_at = ? "
+                "WHERE id = ?",
+                (to_state, previous_state_field, finished_at, attempt_id),
+            )
+            # 2. Insertion dans le journal append-only.
+            conn.execute(
+                "INSERT INTO state_transitions "
+                "(attempt_id, from_state, to_state, reason, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (attempt_id, from_state, to_state, reason, created_at),
+            )
+
 
 __all__ = ["Database"]

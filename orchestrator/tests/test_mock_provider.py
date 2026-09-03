@@ -49,7 +49,7 @@ def test_health_can_be_set_down():
 
 def test_validation_can_be_reprogrammed():
     p = MockLLMProvider()
-    p.set_validation(ValidationResult(status="rejected", reason="bad"))
+    p.set_validation(ValidationResult(approved=False, reason="bad"))
     res = p.validate(code="x", role_config={})
     assert res.status == "rejected"
 

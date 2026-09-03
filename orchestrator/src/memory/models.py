@@ -139,6 +139,21 @@ class GitSnapshot:
     created_at: str = ""
 
 
+# ----------------------------------------------------------------------
+# StateTransition
+# ----------------------------------------------------------------------
+
+
+@dataclass(slots=True)
+class StateTransition:
+    id: int | None
+    attempt_id: int
+    from_state: str | None
+    to_state: str
+    reason: str | None
+    created_at: str
+
+
 def row_to_project(row):
     return Project(
         id=row["id"],
@@ -262,6 +277,17 @@ def row_to_git_snapshot(row):
     )
 
 
+def row_to_state_transition(row):
+    return StateTransition(
+        id=row["id"],
+        attempt_id=row["attempt_id"],
+        from_state=_row_get(row, "from_state"),
+        to_state=row["to_state"],
+        reason=_row_get(row, "reason"),
+        created_at=row["created_at"],
+    )
+
+
 __all__ = [
     "Project",
     "Level",
@@ -274,6 +300,7 @@ __all__ = [
     "MemoryEntry",
     "ProviderState",
     "GitSnapshot",
+    "StateTransition",
     "row_to_project",
     "row_to_level",
     "row_to_task",
@@ -285,4 +312,5 @@ __all__ = [
     "row_to_memory",
     "row_to_provider_state",
     "row_to_git_snapshot",
+    "row_to_state_transition",
 ]

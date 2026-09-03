@@ -168,15 +168,20 @@ def test_paused_provider_return_to_previous_state(machine, repos):
     assert refreshed.previous_state is None
 
 
-def test_exit_paused_with_explicit_target(machine, repos):
+def test_exit_paused_strictly_returns_to_previous_state(machine, repos):
+    """Phase 1.1 : exit_paused retourne strictement vers previous_state.
+
+    Aucune cible arbitraire n'est acceptee. La machine reprend
+    exactement la ou elle s'etait arretee.
+    """
     a = _new_attempt(repos)
     machine.transition(a, AttemptState.PREPARING)
     machine.transition(a, AttemptState.GENERATING)
     machine.enter_paused(a, reason="x")
-    # On reprend mais on decide d'aller en BUILDING directement.
-    # previous_state etait GENERATING, GENERATING -> BUILDING est valide.
-    machine.exit_paused(a, AttemptState.BUILDING)
-    assert a.state == "BUILDING"
+    machine.exit_paused(a)
+    # previous_state etait GENERATING ; on y revient forcement.
+    assert a.state == "GENERATING"
+    assert a.previous_state is None
 
 
 def test_exit_paused_without_previous_state_raises(machine, repos):

@@ -38,6 +38,7 @@ from .models import (
     Project,
     ProviderState,
     Review,
+    StateTransition,
     Task,
     Validation,
     row_to_attempt,
@@ -49,6 +50,7 @@ from .models import (
     row_to_project,
     row_to_provider_state,
     row_to_review,
+    row_to_state_transition,
     row_to_task,
     row_to_validation,
 )
@@ -608,6 +610,76 @@ class GitSnapshotRepository:
         return [row_to_git_snapshot(r) for r in rows]
 
 
+
+# ----------------------------------------------------------------------
+# StateTransitions
+# ----------------------------------------------------------------------
+
+
+class StateTransitionRepository:
+    """Repository pour le journal append-only des transitions d'etat.
+
+    Convention :
+    - on n'insere JAMAIS de ligne manuellement depuis l'exterieur ;
+      c'est :meth:`Database.record_state_transition` qui est utilise
+      par :class:`AttemptStateMachine` pour garantir l'atomicite.
+    - on ne modifie JAMAIS une ligne existante ;
+    - on n'utilise pas d'UPDATE ici (append-only strict).
+    """
+
+    def __init__(self, db: Database):
+        self._db = db
+
+    def insert(
+        self,
+        attempt_id: int,
+        from_state: str | None,
+        to_state: str,
+        reason: str | None,
+        created_at: str,
+    ) -> StateTransition:
+        """Insertion simple, NE PAS UTILISER directement depuis la machine.
+
+        Preferez :meth:`Database.record_state_transition` qui garantit
+        l'atomicite avec la mise a jour de attempts.state.
+        """
+        with self._db.transaction() as conn:
+            cur = conn.execute(
+                "INSERT INTO state_transitions "
+                "(attempt_id, from_state, to_state, reason, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (attempt_id, from_state, to_state, reason, created_at),
+            )
+            sid = cur.lastrowid
+        return StateTransition(
+            id=sid,
+            attempt_id=attempt_id,
+            from_state=from_state,
+            to_state=to_state,
+            reason=reason,
+            created_at=created_at,
+        )
+
+    def list_for_attempt(self, attempt_id: int) -> list[StateTransition]:
+        """Renvoie toutes les transitions d'un Attempt, dans l'ordre
+        chronologique (par id croissant)."""
+        rows = self._db.connection.execute(
+            "SELECT * FROM state_transitions WHERE attempt_id = ? "
+            "ORDER BY id ASC",
+            (attempt_id,),
+        ).fetchall()
+        return [row_to_state_transition(r) for r in rows]
+
+    def last_for_attempt(self, attempt_id: int) -> StateTransition | None:
+        """Renvoie la derniere transition (par id) pour un Attempt."""
+        row = self._db.connection.execute(
+            "SELECT * FROM state_transitions WHERE attempt_id = ? "
+            "ORDER BY id DESC LIMIT 1",
+            (attempt_id,),
+        ).fetchone()
+        return row_to_state_transition(row) if row else None
+
+
 __all__ = [
     "ProjectRepository",
     "LevelRepository",
@@ -620,4 +692,5 @@ __all__ = [
     "MemoryRepository",
     "ProviderStateRepository",
     "GitSnapshotRepository",
+    "StateTransitionRepository",
 ]

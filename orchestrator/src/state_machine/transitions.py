@@ -38,11 +38,9 @@ from .states import AttemptState
 _ALLOWED: dict[AttemptState, frozenset[AttemptState]] = {
     AttemptState.CREATED: frozenset({
         AttemptState.PREPARING,
-        AttemptState.PAUSED_PROVIDER,
     }),
     AttemptState.PREPARING: frozenset({
         AttemptState.GENERATING,
-        AttemptState.PAUSED_PROVIDER,
     }),
     AttemptState.GENERATING: frozenset({
         AttemptState.BUILDING,
@@ -52,12 +50,10 @@ _ALLOWED: dict[AttemptState, frozenset[AttemptState]] = {
     AttemptState.BUILDING: frozenset({
         AttemptState.TESTING,
         AttemptState.RETRY_PENDING,
-        AttemptState.PAUSED_PROVIDER,
     }),
     AttemptState.TESTING: frozenset({
         AttemptState.REVIEWING,
         AttemptState.RETRY_PENDING,
-        AttemptState.PAUSED_PROVIDER,
     }),
     AttemptState.REVIEWING: frozenset({
         AttemptState.VALIDATING,
@@ -74,17 +70,15 @@ _ALLOWED: dict[AttemptState, frozenset[AttemptState]] = {
     AttemptState.RETRY_PENDING: frozenset({
         AttemptState.COMPLETED,  # l'Attempt courant est clos
         AttemptState.FAILED_AFTER_RETRIES,
-        AttemptState.PAUSED_PROVIDER,
     }),
     AttemptState.FAILED_AFTER_RETRIES: frozenset({
         AttemptState.COMPLETED,
     }),
-    AttemptState.PAUSED_PROVIDER: frozenset({
-        # La sortie vers previous_state est gérée par :func:`exit_paused`.
-        # On autorise aussi les autres transitions naturelles depuis
-        # PAUSED_PROVIDER si l'orchestrateur le décide.
-        AttemptState.PAUSED_PROVIDER,
-    }),
+    # PAUSED_PROVIDER -> previous_state uniquement (cf. machine.exit_paused).
+    # La table ci-dessous est vide : aucune transition "directe" n'est
+    # autorisee depuis PAUSED_PROVIDER ; c'est la machine qui gere la
+    # reprise vers previous_state via un chemin specialise.
+    AttemptState.PAUSED_PROVIDER: frozenset(),
     AttemptState.COMPLETED: frozenset(),
 }
 

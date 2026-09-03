@@ -36,7 +36,7 @@ def test_recovery_after_restart_at_building(tmp_db_path):
     t = tasks.create(lvl.id, "task-1")
     a = attempts.create(t.id, 1)
 
-    machine = AttemptStateMachine(writer=attempts)
+    machine = AttemptStateMachine(db=db1)
     machine.transition(a, AttemptState.PREPARING)
     machine.transition(a, AttemptState.GENERATING)
     machine.transition(a, AttemptState.BUILDING)
@@ -93,7 +93,7 @@ def test_recovery_after_completion(tmp_db_path):
     t = tasks.create(lvl.id, "done task")
     a = attempts.create(t.id, 1)
 
-    machine = AttemptStateMachine(writer=attempts)
+    machine = AttemptStateMachine(db=db)
     machine.transition(a, AttemptState.PREPARING)
     machine.transition(a, AttemptState.GENERATING)
     machine.transition(a, AttemptState.BUILDING)

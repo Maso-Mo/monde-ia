@@ -207,3 +207,26 @@ CREATE TABLE IF NOT EXISTS git_snapshots (
 
 CREATE INDEX IF NOT EXISTS idx_git_snapshots_attempt ON git_snapshots(attempt_id);
 CREATE INDEX IF NOT EXISTS idx_git_snapshots_level   ON git_snapshots(level_id);
+
+-- ----------------------------------------------------------------------
+-- StateTransition (journal append-only des transitions d'un Attempt)
+-- ----------------------------------------------------------------------
+-- Chaque entree est une transition observee dans la machine a etats.
+-- from_state est NULL uniquement pour la toute premiere entree (CREATED initial).
+--
+-- Append-only : on n'UPDATE et on ne DELETE JAMAIS une ligne.
+-- La coherence avec attempts.state est garantie par transaction SQLite.
+CREATE TABLE IF NOT EXISTS state_transitions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  attempt_id  INTEGER NOT NULL
+                        REFERENCES attempts(id) ON DELETE CASCADE,
+  from_state  TEXT    NULL,
+  to_state    TEXT    NOT NULL,
+  reason      TEXT    NULL,
+  created_at  TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_state_transitions_attempt
+  ON state_transitions(attempt_id);
+CREATE INDEX IF NOT EXISTS idx_state_transitions_time
+  ON state_transitions(attempt_id, created_at);

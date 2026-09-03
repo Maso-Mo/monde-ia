@@ -1,5 +1,7 @@
 """
 Tests de chargement de llm_roles.yaml.
+
+Phase 1.1 : les modeles sont maintenant specifies.
 """
 
 from __future__ import annotations
@@ -10,12 +12,9 @@ from src.llm import get_role_config, load_roles_config
 def test_load_default_roles_file():
     roles = load_roles_config()
     assert set(roles.keys()) >= {"generator", "reviewer", "validator"}
-    # Les modeles sont a null tant qu'on n'a pas choisi.
     for name in ("generator", "reviewer", "validator"):
         cfg = get_role_config(roles, name)
         assert cfg is not None
-        # provider / model peuvent etre None ou None
-        assert "provider" in cfg or "model" in cfg or cfg == {}
 
 
 def test_get_role_config_unknown_role_returns_empty():
@@ -23,10 +22,46 @@ def test_get_role_config_unknown_role_returns_empty():
     assert get_role_config(roles, "nope") == {}
 
 
-def test_roles_have_expected_family_hint():
+def test_reviewer_qwen2_5_coder():
+    """reviewer: cloudflare / qwen2.5-coder-32b."""
     roles = load_roles_config()
-    # reviewer = qwen2.5, validator = qwen3 (en V1, indicatif uniquement)
     reviewer = get_role_config(roles, "reviewer")
-    validator = get_role_config(roles, "validator")
     assert reviewer.get("family") == "qwen2.5"
+    assert reviewer.get("provider") == "cloudflare"
+    assert reviewer.get("model") == "qwen2.5-coder-32b"
+    assert reviewer.get("temperature") == 0.2
+    assert reviewer.get("response_format") == "json_object"
+    assert reviewer.get("context_window") == 32768
+
+
+def test_validator_qwen3_groq():
+    """validator: groq / qwen3.6-27b / reasoning_effort none."""
+    roles = load_roles_config()
+    validator = get_role_config(roles, "validator")
     assert validator.get("family") == "qwen3"
+    assert validator.get("provider") == "groq"
+    assert validator.get("model") == "qwen3.6-27b"
+    assert validator.get("temperature") == 0.2
+    assert validator.get("response_format") == "json_object"
+    assert validator.get("reasoning_effort") == "none"
+    assert validator.get("context_window") == 131072
+
+
+def test_generator_unchanged():
+    """generator reste configure minimalement (provider: null, model: null)."""
+    roles = load_roles_config()
+    gen = get_role_config(roles, "generator")
+    # provider et model peuvent etre null ou absents.
+    assert gen.get("provider") in (None, "")
+    assert gen.get("model") in (None, "")
+
+
+def test_roles_have_no_secret():
+    """Aucun role ne doit contenir de cle API ou token."""
+    roles = load_roles_config()
+    forbidden_keys = {"api_key", "secret", "token", "password"}
+    for name, cfg in roles.items():
+        for k in cfg.keys():
+            assert k.lower() not in forbidden_keys, (
+                f"Rôle '{name}' contient la clé suspecte '{k}'"
+            )

@@ -97,8 +97,8 @@ def test_two_retries_then_approval(repos, jsonl_logger, tmp_db_path):
         def validate(self, *, code, role_config):
             state["n"] += 1
             if state["n"] < 3:
-                return ValidationResult(status="rejected", reason="nope")
-            return ValidationResult(status="approved", reason="finally")
+                return ValidationResult(approved=False, reason="nope")
+            return ValidationResult(approved=True, reason="finally")
 
     provider = DynamicProvider()
 

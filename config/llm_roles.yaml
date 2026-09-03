@@ -8,24 +8,17 @@
 # Trois rôles logiques :
 #   - generator : produit le code du site
 #   - reviewer  : analyse le code et propose des corrections
-#                  (famille Qwen 2.5 envisagée)
+#                 (Phase 1.1 : Qwen 2.5 coder via Cloudflare)
 #   - validator : valide ou refuse la tentative finale
-#                  (famille Qwen 3 envisagée)
+#                 (Phase 1.1 : Qwen 3.6 via Groq)
 #
-# IMPORTANT (Phase 1) :
-#   - Les modèles exacts ne sont PAS encore choisis.
-#   - provider / model sont laissés à null tant que le catalogue
-#     FreeLLMAPI réel n'a pas été inspecté.
-#   - Cette config est utilisée par la Phase 2 (intégration
-#     FreeLLMAPI réelle) sans changement de code.
-#
-# Valeurs possibles (rappel) :
-#   provider : nom du fournisseur cible via FreeLLMAPI (ex. "groq",
-#              "openrouter", "mistral", etc.) — null = pas encore
-#              configuré.
-#   model    : identifiant exact du modèle chez le provider.
-#   family   : indication libre (ex. "qwen2.5", "qwen3",
-#              "llama3.3") — purement informatif en V1.
+# IMPORTANT :
+#   - Le runtime appelle UNIQUEMENT FreeLLMAPI (projet tiers séparé).
+#   - provider indique le provider attendu DERRIÈRE FreeLLMAPI,
+#     principalement à des fins de logging/diagnostic. Le runtime
+#     ZFLM ne contacte jamais Cloudflare ou Groq directement.
+#   - Aucune cle API dans ce fichier. Aucun secret.
+#   - OpenRouter ne fait PAS partie du runtime final.
 
 roles:
 
@@ -35,19 +28,25 @@ roles:
     family: null
 
   reviewer:
-    provider: null
-    model: null
     family: qwen2.5
+    provider: cloudflare
+    model: qwen2.5-coder-32b
+    temperature: 0.2
+    response_format: json_object
+    context_window: 32768
 
   validator:
-    provider: null
-    model: null
     family: qwen3
+    provider: groq
+    model: qwen3.6-27b
+    temperature: 0.2
+    response_format: json_object
+    reasoning_effort: none
+    context_window: 131072
 
-# Notes d'évolution futures :
-# - Exemple pour activer FreeLLMAPI -> Groq -> Qwen 2.5 :
-#     reviewer:
-#       provider: groq
-#       model: qwen-2.5-72b-instruct
-#       family: qwen2.5
-# - Aucun changement de code requis, uniquement éditer ce fichier.
+# Notes :
+# - temperature, response_format, reasoning_effort, context_window
+#   sont des parametres transmis a FreeLLMAPI ; ils n'ont pas besoin
+#   d'etre compris par ZFLM, juste transmis tels quels.
+# - Pour changer de modele : editer ce fichier uniquement.
+#   Aucun changement de code Python requis.

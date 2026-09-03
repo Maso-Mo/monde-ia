@@ -22,17 +22,18 @@ def _new_attempt(repos):
     return repos["attempts"].create(t.id, 1)
 
 
-def test_pause_at_each_active_state(machine, repos):
-    """Le provider peut declencher une pause a n'importe quel etat actif."""
-    active_states = [
-        AttemptState.PREPARING,
+def test_pause_at_each_llm_state(machine, repos):
+    """Le provider peut declencher une pause aux etats LLM (Phase 1.1).
+
+    Seuls GENERATING, REVIEWING et VALIDATING peuvent entrer en
+    PAUSED_PROVIDER (cf. table de transitions stricte).
+    """
+    llm_states = [
         AttemptState.GENERATING,
-        AttemptState.BUILDING,
-        AttemptState.TESTING,
         AttemptState.REVIEWING,
         AttemptState.VALIDATING,
     ]
-    for target in active_states:
+    for target in llm_states:
         a = _new_attempt(repos)
         # Amene l'attempt jusqu'a target.
         path = [
@@ -51,7 +52,7 @@ def test_pause_at_each_active_state(machine, repos):
         machine.enter_paused(a, reason=f"paused at {target.value}")
         assert a.state == "PAUSED_PROVIDER"
         assert a.previous_state == target.value
-        # Reprise
+        # Reprise (vers previous_state uniquement)
         machine.exit_paused(a)
         assert a.state == target.value
         assert a.previous_state is None
@@ -101,11 +102,16 @@ def test_cannot_pause_after_completed(machine, repos):
         machine.enter_paused(a)
 
 
-def test_exit_paused_with_invalid_target_raises(machine, repos):
-    """Si previous_state etait GENERATING, on ne peut pas sauter en REVIEWING."""
+def test_exit_paused_signature_rejects_arbitrary_target(machine, repos):
+    """Phase 1.1 : exit_paused ne prend plus de target arbitraire.
+
+    La sortie est strictement vers previous_state. On verifie ici
+    que la signature n'accepte qu'un seul argument (l'attempt).
+    """
     a = _new_attempt(repos)
     machine.transition(a, AttemptState.PREPARING)
     machine.transition(a, AttemptState.GENERATING)
     machine.enter_paused(a)
-    with pytest.raises(InvalidTransition):
-        machine.exit_paused(a, AttemptState.REVIEWING)
+    # La signature ne doit pas accepter de second argument.
+    with pytest.raises(TypeError):
+        machine.exit_paused(a, AttemptState.REVIEWING)  # type: ignore[misc]

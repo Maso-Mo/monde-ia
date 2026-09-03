@@ -28,7 +28,7 @@ def test_db_file_persists_between_instances(tmp_db_path):
     t = TaskRepository(db1).create(lvl.id, "task-a")
     a = AttemptRepository(db1).create(t.id, 1)
 
-    machine = AttemptStateMachine(writer=AttemptRepository(db1))
+    machine = AttemptStateMachine(db=db1)
     machine.transition(a, AttemptState.PREPARING)
     machine.transition(a, AttemptState.GENERATING)
     machine.transition(a, AttemptState.BUILDING)
