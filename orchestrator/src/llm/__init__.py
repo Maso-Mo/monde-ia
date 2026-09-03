@@ -1,12 +1,13 @@
 """orchestrator.src.llm
 
-Interfaces et provider mock pour les appels LLM.
+Interfaces et providers LLM.
 
 Voir :
 
-- :mod:`.interfaces` : GenerationResult, ReviewResult, ValidationResult, LLMProvider
-- :mod:`.provider`   : MockLLMProvider (utilise par les tests V1)
-- :mod:`.roles`      : chargement de config/llm_roles.yaml
+- :mod:`.interfaces`         : GenerationResult, ReviewResult, ValidationResult, LLMProvider
+- :mod:`.provider`           : MockLLMProvider (tests V1)
+- :mod:`.freellmapi_provider`: FreeLLMAPIProvider (Phase 2, runtime)
+- :mod:`.roles`              : chargement de config/llm_roles.yaml
 """
 
 from .interfaces import (
@@ -17,6 +18,7 @@ from .interfaces import (
     LLMProvider,
 )
 from .provider import MockLLMProvider, MockCall
+from .freellmapi_provider import FreeLLMAPIProvider, create_freellmapi_provider, FreeLLMAPIError, ERROR_CODES
 from .roles import load_roles_config, get_role_config
 
 __all__ = [
@@ -27,6 +29,10 @@ __all__ = [
     "LLMProvider",
     "MockLLMProvider",
     "MockCall",
+    "FreeLLMAPIProvider",
+    "create_freellmapi_provider",
+    "FreeLLMAPIError",
+    "ERROR_CODES",
     "load_roles_config",
     "get_role_config",
 ]
