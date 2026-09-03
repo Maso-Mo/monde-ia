@@ -23,14 +23,20 @@ def test_get_role_config_unknown_role_returns_empty():
 
 
 def test_reviewer_qwen2_5_coder():
-    """reviewer: cloudflare / qwen2.5-coder-32b."""
+    """reviewer: cloudflare / @cf/qwen/qwen2.5-coder-32b-instruct.
+
+    Configuration verifiee runtime reellement.
+    PAS de json_object : le JSON est impose par le prompt systeme.
+    """
     roles = load_roles_config()
     reviewer = get_role_config(roles, "reviewer")
     assert reviewer.get("family") == "qwen2.5"
     assert reviewer.get("provider") == "cloudflare"
-    assert reviewer.get("model") == "qwen2.5-coder-32b"
-    assert reviewer.get("temperature") == 0.2
-    assert reviewer.get("response_format") == "json_object"
+    assert reviewer.get("model") == "@cf/qwen/qwen2.5-coder-32b-instruct"
+    assert reviewer.get("temperature") == 0.1
+    # response_format: null -> pas de json_object force, le prompt
+    # impose la structure.
+    assert reviewer.get("response_format") is None
     assert reviewer.get("context_window") == 32768
 
 

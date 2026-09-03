@@ -41,7 +41,7 @@ appel réseau réel. Toute la logique est testable avec des mocks.
   via `AttemptStateMachine`. Le cas `PAUSED_PROVIDER` mémorise
   `previous_state` pour reprise exacte.
 - **Rôles LLM** : configuration YAML (`config/llm_roles.yaml`) avec
-  generator / reviewer / validator. Modèles exacts **non choisis** en V1.
+  generator / reviewer / validator.
 - **Abstraction LLM** : interface `LLMProvider`, DTOs (`GenerationResult`,
   `ReviewResult`, `ValidationResult`, `ProviderHealth`) et
   `MockLLMProvider` pour les tests.
@@ -52,7 +52,7 @@ appel réseau réel. Toute la logique est testable avec des mocks.
   la limite de 3 tentatives par Task.
 - **Entrypoint** : `python -m src.main` avec modes
   `--show-config`, `--show-recovery`, `--mock-cycle`.
-- **Tests** : **75 tests pytest**, tous verts.
+- **Tests** : **101 tests pytest** (75 Phase 1 + 26 Phase 1.1), tous verts.
 
 ### Décisions techniques Phase 1
 
@@ -67,7 +67,89 @@ appel réseau réel. Toute la logique est testable avec des mocks.
 | Modèles Qwen 2.5 / 3 | `family: qwen2.5` / `family: qwen3` dans YAML, `provider: null`, `model: null` |
 | Tests | `tmp_path` par test, fixtures `db`, `repos`, `mock_provider`, `jsonl_logger`, `machine` |
 
-## Phase 2+ — À valider ensemble
+## Phase 1.1 — Corrections de conformité (terminée)
+
+Phase 1.1 a apporté :
+
+- Une **table `state_transitions`** append-only qui journalise chaque
+  transition d'état d'un Attempt. Chaque transition est persistée
+  **atomiquement** avec `attempts.state` via
+  `Database.record_state_transition` (UPDATE + INSERT dans la même
+  transaction SQLite).
+- Une **table de transitions** restreinte :
+  `PAUSED_PROVIDER` n'est accessible que depuis `GENERATING`,
+  `REVIEWING` et `VALIDATING`. La sortie de `PAUSED_PROVIDER`
+  est strictement vers `previous_state` (pas de cible arbitraire).
+- Les **modèles réels** configurés dans `config/llm_roles.yaml`
+  (reviewer Qwen 2.5 Coder via Cloudflare, validator Qwen 3.6 via Groq).
+
+### Routage runtime final
+
+```
+LLM provider (reviewer) :
+  ZFLM
+    → FreeLLMAPI
+    → Cloudflare
+    → @cf/qwen/qwen2.5-coder-32b-instruct
+
+LLM provider (validator) :
+  ZFLM
+    → FreeLLMAPI
+    → Groq
+    → qwen/qwen3.6-27b
+```
+
+ZFLM ne contacte **jamais** Cloudflare ou Groq directement. Le champ
+`provider` dans `llm_roles.yaml` est informatif (logging/diagnostic).
+Le runtime parle uniquement à FreeLLMAPI.
+
+### Incompatibilité connue : Cloudflare / Qwen 2.5 / FreeLLMAPI (Phase 2)
+
+Le reviewer Qwen 2.5-Coder-32B-Instruct, testé runtime réel via
+Cloudflare Workers AI, renvoie `choices[0].message.content`
+**directement comme un objet JSON** (et non comme une string JSON) :
+
+```json
+"message": {
+  "role": "assistant",
+  "content": {
+    "issues_found": [...],
+    "severity": "critical",
+    "instructions_for_fix": [...],
+    "retry_needed": true
+  }
+}
+```
+
+Le provider Cloudflare actuellement utilisé par FreeLLMAPI interprète
+ce contenu-objet comme un `empty_completion`. **Le modèle, le prompt
+et Cloudflare ne sont pas en panne** ; c'est un écart de normalisation
+entre la forme de réponse Cloudflare et le traitement actuel de
+FreeLLMAPI.
+
+**Correctif prévu Phase 2** (à appliquer dans FreeLLMAPI, PAS dans ZFLM) :
+
+- Si `choices[0].message.content` est un objet JSON non-null,
+  normaliser via `JSON.stringify(content)` avant le traitement standard,
+  pour produire une réponse OpenAI-compatible consommable par ZFLM.
+- Correctif limité au provider Cloudflare **OU** limité au cas
+  `message.content` non-string-non-null. Pas de transformation naïve
+  sur tous les providers (sinon Groq casse).
+- Tests de régression Phase 2 prévus :
+  1. content string classique ;
+  2. content objet Cloudflare ;
+  3. content null ;
+  4. réponse vide réelle ;
+  5. provider non-Cloudflare ;
+  6. Qwen 2.5 reviewer ;
+  7. Qwen 3 validator via Groq.
+
+**Décision Phase 2** : nous utiliserons une version **contrôlée et
+pinnée** de FreeLLMAPI. La version ne devra pas évoluer
+automatiquement pendant l'expérience d'un mois.
+
+Note sécurité : aucun token, Account ID ou clé API n'apparaît dans
+ce document ni dans le repo.
 
 À venir (sans ordre figé) :
 

@@ -30,9 +30,9 @@ roles:
   reviewer:
     family: qwen2.5
     provider: cloudflare
-    model: qwen2.5-coder-32b
-    temperature: 0.2
-    response_format: json_object
+    model: "@cf/qwen/qwen2.5-coder-32b-instruct"
+    temperature: 0.1
+    response_format: null
     context_window: 32768
 
   validator:
