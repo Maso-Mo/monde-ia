@@ -63,6 +63,10 @@ class LLMRoleConfig:
     provider: str | None = None
     model: str | None = None
     family: str | None = None  # ex. "qwen2.5", "qwen3" — indicatif
+    temperature: float | None = None
+    response_format: dict[str, Any] | str | None = None
+    reasoning_effort: str | None = None
+    context_window: int | None = None
 
     @classmethod
     def from_yaml(cls, name: str, data: dict[str, Any]) -> "LLMRoleConfig":
@@ -71,7 +75,24 @@ class LLMRoleConfig:
             provider=data.get("provider"),
             model=data.get("model"),
             family=data.get("family"),
+            temperature=data.get("temperature"),
+            response_format=data.get("response_format"),
+            reasoning_effort=data.get("reasoning_effort"),
+            context_window=data.get("context_window"),
         )
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Acces dict-like pour compatibilite avec l'ancien code."""
+        return getattr(self, key, default)
+
+    def __contains__(self, key: str) -> bool:
+        return hasattr(self, key)
+
+    def __getitem__(self, key: str) -> Any:
+        try:
+            return getattr(self, key)
+        except AttributeError:
+            raise KeyError(key)
 
 
 @dataclass(frozen=True)
