@@ -18,7 +18,7 @@ from .interfaces import (
     LLMProvider,
 )
 from .provider import MockLLMProvider, MockCall
-from .freellmapi_provider import FreeLLMAPIProvider, create_freellmapi_provider, FreeLLMAPIError, ERROR_CODES
+from .freellmapi_provider import FreeLLMAPIProvider, create_freellmapi_provider, FreeLLMAPIError, ERROR_CODES, _normalize_response_format
 from .roles import load_roles_config, get_role_config
 
 __all__ = [
@@ -33,6 +33,7 @@ __all__ = [
     "create_freellmapi_provider",
     "FreeLLMAPIError",
     "ERROR_CODES",
+    "_normalize_response_format",
     "load_roles_config",
     "get_role_config",
 ]

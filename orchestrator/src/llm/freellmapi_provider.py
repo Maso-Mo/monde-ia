@@ -160,6 +160,39 @@ def _extract_json_from_text(text: str) -> Optional[dict[str, Any]]:
     return None
 
 
+def _normalize_response_format(value: Any) -> Optional[dict[str, Any]]:
+    """Normalise response_format pour l'API OpenAI-compatible.
+
+    Comportement attendu :
+    - None -> None (champ absent de la requete)
+    - "json_object" -> {"type": "json_object"}
+    - {"type": "json_object"} -> inchangé
+    - string inconnue -> erreur de configuration
+    - autre -> erreur de configuration
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        if value == "json_object":
+            return {"type": "json_object"}
+        raise ValueError(
+            f"response_format string inconnu: {value!r}. "
+            f"Valeurs supportées: 'json_object' ou objet {{'type': 'json_object'}}."
+        )
+    if isinstance(value, dict):
+        # Verifier que c'est bien un objet OpenAI valide
+        if value.get("type") == "json_object":
+            return value
+        raise ValueError(
+            f"response_format objet invalide: {value!r}. "
+            f"Attendu: {{'type': 'json_object'}}."
+        )
+    raise ValueError(
+        f"response_format type non supporté: {type(value).__name__}. "
+        f"Attendu: None, 'json_object', ou {{'type': 'json_object'}}."
+    )
+
+
 def _make_generation_result(
     text: str,
     *,
@@ -459,7 +492,7 @@ class FreeLLMAPIProvider(LLMProvider):
             )
 
         temperature = role_config.get("temperature")
-        response_format = role_config.get("response_format")
+        response_format = _normalize_response_format(role_config.get("response_format"))
         reasoning_effort = role_config.get("reasoning_effort")
 
         # Build prompt for validator

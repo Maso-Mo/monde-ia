@@ -13,6 +13,7 @@ from src.llm import (
     FreeLLMAPIProvider,
     create_freellmapi_provider,
     FreeLLMAPIError,
+    _normalize_response_format,
 )
 from src.llm.interfaces import ProviderHealth
 
@@ -157,3 +158,114 @@ class TestFreeLLMAPIError:
         assert err.code == "TIMEOUT"
         assert err.status_code == 408
         assert err.retryable is True
+
+
+class TestNormalizeResponseFormat:
+    """Tests pour la normalisation de response_format."""
+
+    def test_none_returns_none(self):
+        """None -> None (champ absent de la requete)."""
+        assert _normalize_response_format(None) is None
+
+    def test_string_json_object(self):
+        """'json_object' -> {'type': 'json_object'}."""
+        result = _normalize_response_format("json_object")
+        assert result == {"type": "json_object"}
+
+    def test_dict_json_object(self):
+        """{'type': 'json_object'} -> inchangé."""
+        input_value = {"type": "json_object"}
+        result = _normalize_response_format(input_value)
+        assert result == input_value
+        # Pour un dict valide, on renvoie le meme objet (pas de copie)
+        assert result is input_value
+
+    def test_unknown_string_raises(self):
+        """String inconnue -> erreur de configuration claire."""
+        with pytest.raises(ValueError, match="response_format string inconnu"):
+            _normalize_response_format("unknown_format")
+
+    def test_invalid_dict_raises(self):
+        """Objet invalide -> erreur de configuration claire."""
+        with pytest.raises(ValueError, match="response_format objet invalide"):
+            _normalize_response_format({"type": "invalid"})
+
+    def test_invalid_type_raises(self):
+        """Type non supporté -> erreur de configuration claire."""
+        with pytest.raises(ValueError, match="response_format type non supporté"):
+            _normalize_response_format(123)
+
+    def test_empty_string_raises(self):
+        """String vide -> erreur."""
+        with pytest.raises(ValueError, match="response_format string inconnu"):
+            _normalize_response_format("")
+
+
+class TestValidateResponseFormatIntegration:
+    """Tests d'integration pour validate avec response_format."""
+
+    def test_validator_sends_correct_response_format(self):
+        """Validator envoie le bon objet response_format."""
+        provider = FreeLLMAPIProvider(base_url="http://test", api_key="key")
+
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "choices": [{
+                "message": {
+                    "content": '{"approved": true, "score": 100, "reason": "ok", "blocking_issues": []}'
+                }
+            }]
+        }
+        mock_response.raise_for_status = Mock()
+        mock_client.post.return_value = mock_response
+        provider._client = mock_client
+
+        role_config = {
+            "model": "qwen3.6-27b",
+            "temperature": 0.2,
+            "response_format": "json_object",
+            "reasoning_effort": "none",
+        }
+
+        provider.validate(code="<html>test</html>", role_config=role_config)
+
+        # Verifier l'appel au client
+        call_args = mock_client.post.call_args
+        payload = call_args[1]["json"]
+        assert "response_format" in payload
+        assert payload["response_format"] == {"type": "json_object"}
+        assert payload["reasoning_effort"] == "none"
+        assert payload["temperature"] == 0.2
+        assert payload["model"] == "qwen3.6-27b"
+
+    def test_reviewer_does_not_send_response_format(self):
+        """Reviewer n'envoie pas response_format (null)."""
+        provider = FreeLLMAPIProvider(base_url="http://test", api_key="key")
+
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "choices": [{
+                "message": {
+                    "content": '{"issues_found": [], "severity": "low", "instructions_for_fix": [], "retry_needed": false}'
+                }
+            }]
+        }
+        mock_response.raise_for_status = Mock()
+        mock_client.post.return_value = mock_response
+        provider._client = mock_client
+
+        role_config = {
+            "model": "@cf/qwen/qwen2.5-coder-32b-instruct",
+            "temperature": 0.1,
+            "response_format": None,
+        }
+
+        provider.review(code="const x = 1;", role_config=role_config)
+
+        call_args = mock_client.post.call_args
+        payload = call_args[1]["json"]
+        assert "response_format" not in payload
+        assert payload["temperature"] == 0.1
+        assert "reasoning_effort" not in payload
