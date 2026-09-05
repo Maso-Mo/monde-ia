@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Optional
 
 import httpx
@@ -221,11 +221,11 @@ class FreeLLMAPIProvider(LLMProvider):
     """Provider FreeLLMAPI utilisant httpx."""
 
     base_url: str
-    api_key: str
+    api_key: str = field(repr=False)
     timeout_s: float = 60.0
 
-    # Internal client (lazy init)
-    _client: Optional[httpx.Client] = None
+    # Internal client (lazy init) - hidden from repr
+    _client: Optional[httpx.Client] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if not self.base_url:
